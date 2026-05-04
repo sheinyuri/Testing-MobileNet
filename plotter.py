@@ -18,7 +18,7 @@ def results_plotter(path, name):
         x_vals, y_vals = zip(*coordinates)
         plt.plot(x_vals, y_vals, marker='o', label=key)
 
-    plt.title('Combined Trend Plot', fontsize=14)
+    plt.title('Combined loss function trend plots for f{}', fontsize=14)
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('f{name}', fontsize=12)
 
