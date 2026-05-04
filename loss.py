@@ -109,7 +109,7 @@ class FocalLoss(nn.Module):
             alpha_t = self.alpha[targets]
             loss = alpha_t * loss
 
-        return loss
+        return loss.mean()
 
 
 class ClassBalancedLoss(nn.Module):
