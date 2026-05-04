@@ -19,8 +19,8 @@ def results_plotter(path, name):
         plt.plot(x_vals, y_vals, marker='o', label=key)
 
     plt.title('Combined Trend Plot', fontsize=14)
-    plt.xlabel('X-Axis Values', fontsize=12)
-    plt.ylabel('Y-Axis Values', fontsize=12)
+    plt.xlabel('Epoch', fontsize=12)
+    plt.ylabel('f{name}', fontsize=12)
 
     plt.grid(True, linestyle='--', alpha=0.7)
 
