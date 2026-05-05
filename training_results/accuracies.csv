@@ -1,4 +1,0 @@
-criterion,epoch,train_accuracy,test_accuracy
-ce,1,0.1171875,0.1
-ce,2,0.15234375,0.1
-ce,3,0.1484375,0.1
