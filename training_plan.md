@@ -26,3 +26,6 @@ Folder structure:
         - Label Smoothing
     Imbalanced
         - Ce
+
+In each run training with one seed, one loss, and either balanced/imalanced
+Data should be saved in appropriate folders automatically
