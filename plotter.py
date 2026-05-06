@@ -27,3 +27,7 @@ def results_plotter(path, name):
     plt.legend()
     plt.savefig(f'plots/{name}.png', dpi=300, bbox_inches='tight')
     plt.show()    
+
+if __name__ == "__main__":
+    results_plotter("./archived_full_10epochs/accuracies.csv", "accuracies")
+    results_plotter("./archived_full_10epochs/training_losses.csv", "training_losses")
