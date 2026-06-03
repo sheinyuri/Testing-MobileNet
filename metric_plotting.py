@@ -20,6 +20,14 @@ METRIC_COLUMNS = [
     "Macro Recall@3",
 ]
 
+AGGREGATE_PLOT_EXCLUDED_METRICS = {"Macro Recall", "Weighted F1"}
+AGGREGATE_PLOT_METRIC_COLUMNS = [
+    metric
+    for metric in METRIC_COLUMNS
+    if metric not in AGGREGATE_PLOT_EXCLUDED_METRICS
+    and not metric.startswith("Macro Recall@")
+]
+
 PROJECT_SEEDS = ["seed_2", "seed_18", "seed_33", "seed_45", "seed_255"]
 PROJECT_LOSSES = {
     "balanced": ["ce", "focal_loss", "label_smoothing_ce"],
@@ -43,6 +51,23 @@ def _metric_columns(k: int = 3) -> list[str]:
         f"Top-{k} Acc",
         f"Macro Recall@{k}",
     ]
+
+
+def _aggregate_plot_metric_columns(k: int = 3) -> list[str]:
+    return [
+        metric
+        for metric in _metric_columns(k)
+        if metric not in AGGREGATE_PLOT_EXCLUDED_METRICS
+        and not metric.startswith("Macro Recall@")
+    ]
+
+
+def _subplot_shape(n_plots: int) -> tuple[int, int]:
+    if n_plots <= 0:
+        raise ValueError("At least one plot is required.")
+    columns = min(2 if n_plots <= 4 else 3, n_plots)
+    rows = math.ceil(n_plots / columns)
+    return rows, columns
 
 
 def _normalise_class_counts(
@@ -553,6 +578,7 @@ def plot_metrics(
     show: bool = False,
     title: str = "Evaluation Metrics",
     metric_columns: Sequence[str] = METRIC_COLUMNS,
+    zoom_to_data: bool = False,
 ) -> None:
     """Plot the requested metrics over epochs for each criterion in the data."""
     if not metrics_rows:
@@ -564,19 +590,22 @@ def plot_metrics(
         raise ValueError(f"Metrics dataframe is missing columns: {missing}")
 
     fig, axes = plt.subplots(3, 3, figsize=(16, 12), sharex=True)
-    axes = axes.flatten()
+    axes = list(axes.flatten()) if hasattr(axes, "flatten") else [axes]
     criteria = sorted({str(row["criterion"]) for row in metrics_rows})
 
     for index, metric in enumerate(metric_columns):
         ax = axes[index]
+        y_values = []
         for criterion in criteria:
             criterion_rows = sorted(
                 [row for row in metrics_rows if str(row["criterion"]) == criterion],
                 key=lambda row: int(row["epoch"]),
             )
+            metric_values = [float(row[metric]) for row in criterion_rows]
+            y_values.extend(metric_values)
             ax.plot(
                 [int(row["epoch"]) for row in criterion_rows],
-                [float(row[metric]) for row in criterion_rows],
+                metric_values,
                 marker="o",
                 linewidth=1.8,
                 label=criterion,
@@ -584,7 +613,15 @@ def plot_metrics(
         ax.set_title(metric)
         ax.set_xlabel("Epoch")
         ax.set_ylabel(metric)
-        ax.set_ylim(0, 1.0)
+        if zoom_to_data:
+            y_min = min(y_values)
+            y_max = max(y_values)
+            if y_min == y_max:
+                y_min -= 0.01
+                y_max += 0.01
+            ax.set_ylim(y_min, y_max)
+        else:
+            ax.set_ylim(0, 1.0)
         ax.grid(True, linestyle="--", alpha=0.35)
 
     for unused_ax in axes[len(metric_columns) :]:
@@ -612,7 +649,7 @@ def plot_aggregate_metrics(
     output_path: str | Path,
     show: bool = False,
     title: str = "Aggregate Evaluation Metrics",
-    metric_columns: Sequence[str] = METRIC_COLUMNS,
+    metric_columns: Sequence[str] = AGGREGATE_PLOT_METRIC_COLUMNS,
     include_confidence_intervals: bool = True,
     zoom_to_data: bool = False,
 ) -> None:
@@ -620,8 +657,11 @@ def plot_aggregate_metrics(
     if not aggregate_rows:
         raise ValueError("No aggregate rows to plot.")
 
-    fig, axes = plt.subplots(3, 3, figsize=(16, 12), sharex=True)
-    axes = axes.flatten()
+    rows, columns = _subplot_shape(len(metric_columns))
+    fig_width = 7 * columns
+    fig_height = 4.5 * rows
+    fig, axes = plt.subplots(rows, columns, figsize=(fig_width, fig_height), sharex=True)
+    axes = list(axes.flatten()) if hasattr(axes, "flatten") else [axes]
     criteria = sorted({str(row["criterion"]) for row in aggregate_rows})
 
     for index, metric in enumerate(metric_columns):
@@ -664,9 +704,15 @@ def plot_aggregate_metrics(
 
     handles, labels = axes[0].get_legend_handles_labels()
     if handles:
-        fig.legend(handles, labels, loc="upper center", ncol=min(len(labels), 5))
-    fig.suptitle(title, y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.995),
+            ncol=min(len(labels), 5),
+        )
+    fig.suptitle(title, y=0.94)
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -865,7 +911,7 @@ def plot_terminal_loss_comparison(
     output_path: str | Path,
     show: bool = False,
     title: str = "Terminal Loss Comparison",
-    metric_columns: Sequence[str] = METRIC_COLUMNS,
+    metric_columns: Sequence[str] = AGGREGATE_PLOT_METRIC_COLUMNS,
 ) -> None:
     """Plot final-epoch metric means and confidence intervals by loss function."""
     if not aggregate_rows:
@@ -878,8 +924,11 @@ def plot_terminal_loss_comparison(
         ]
         terminal_rows.append(max(criterion_rows, key=lambda row: int(row["epoch"])))
 
-    fig, axes = plt.subplots(3, 3, figsize=(16, 12))
-    axes = axes.flatten()
+    rows, columns = _subplot_shape(len(metric_columns))
+    fig_width = 7 * columns
+    fig_height = 4.5 * rows
+    fig, axes = plt.subplots(rows, columns, figsize=(fig_width, fig_height))
+    axes = list(axes.flatten()) if hasattr(axes, "flatten") else [axes]
     labels = [str(row["criterion"]) for row in terminal_rows]
     x_positions = list(range(len(labels)))
 
@@ -920,8 +969,8 @@ def plot_terminal_loss_comparison(
         if len(final_epochs) == 1
         else f"Terminal Epochs {final_epochs}"
     )
-    fig.suptitle(f"{title} ({epoch_note})", y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.suptitle(f"{title} ({epoch_note})", y=0.98)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1034,6 +1083,7 @@ def plot_project_split_metrics(
 ) -> tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]:
     """Create per-loss CI plots plus one all-loss mean-only plot for a split."""
     metric_columns = _metric_columns(k)
+    plot_metric_columns = _aggregate_plot_metric_columns(k)
     output_dir = Path(output_dir) / split
 
     seed_rows = compute_project_split_metrics(
@@ -1069,8 +1119,9 @@ def plot_project_split_metrics(
             output_path=output_dir / f"{loss_name}_mean_ci.png",
             show=show,
             title=f"{split.title()} {loss_name}: Mean with 95% CI",
-            metric_columns=metric_columns,
+            metric_columns=plot_metric_columns,
             include_confidence_intervals=True,
+            zoom_to_data=True,
         )
 
     plot_aggregate_metrics(
@@ -1078,7 +1129,7 @@ def plot_project_split_metrics(
         output_path=output_dir / f"{split}_all_losses_mean.png",
         show=show,
         title=f"{split.title()} Loss Comparison: Mean with 95% CI",
-        metric_columns=metric_columns,
+        metric_columns=plot_metric_columns,
         include_confidence_intervals=True,
         zoom_to_data=True,
     )
@@ -1087,7 +1138,7 @@ def plot_project_split_metrics(
         output_path=output_dir / f"{split}_terminal_loss_comparison.png",
         show=show,
         title=f"{split.title()} Terminal Loss Comparison",
-        metric_columns=metric_columns,
+        metric_columns=plot_metric_columns,
     )
 
     return seed_rows, aggregate_rows
@@ -1400,6 +1451,7 @@ def plot_results_folder(
         show=show,
         title=f"Evaluation Metrics: {results_folder}",
         metric_columns=_metric_columns(k),
+        zoom_to_data=True,
     )
     return metrics_rows
 
