@@ -9,15 +9,14 @@ from typing import Mapping, Sequence
 
 import matplotlib.pyplot as plt
 
-
 METRIC_COLUMNS = [
     "Accuracy",
     "Macro Precision",
     "Macro Recall",
-    "Macro F1",
-    "Weighted F1",
+    # "Macro F1",
+    # "Weighted F1",
     "Top-3 Acc",
-    "Macro Recall@3",
+    # "Macro Recall@3",
 ]
 
 AGGREGATE_PLOT_EXCLUDED_METRICS = {"Macro Recall", "Weighted F1"}
@@ -29,6 +28,15 @@ AGGREGATE_PLOT_METRIC_COLUMNS = [
 ]
 
 PROJECT_SEEDS = ["seed_2", "seed_18", "seed_33", "seed_45", "seed_255"]
+
+LOSS_COLORS = {
+    "ce": "tab:blue",
+    "weighted_ce": "tab:purple",
+    "class_balanced_loss": "tab:orange",
+    "focal_loss": "tab:green",
+    "label_smoothing_ce": "tab:red"
+}
+
 PROJECT_LOSSES = {
     "balanced": ["ce", "focal_loss", "label_smoothing_ce"],
     "imbalanced": [
@@ -84,7 +92,7 @@ def _normalise_class_counts(
 
     missing_labels = set(class_labels) - set(counts)
     if missing_labels:
-        raise ValueError(f"Missing class sample counts for labels: {sorted(missing_labels)}")
+        raise ValueError(f"Missing class sample counts for labels: {sorted(missing_labels)}.")
 
     if any(counts[label] < 0 for label in class_labels):
         raise ValueError("Class sample counts must be non-negative.")
@@ -113,12 +121,6 @@ def compute_confusion_metrics(
     class_sample_counts: Mapping[int, int] | Sequence[int],
     confusion_filename: str = "testing_confusion_matrices.csv",
 ) -> list[dict[str, float | int | str]]:
-    """Compute accuracy, macro metrics, and train-distribution weighted F1.
-
-    The weighted F1 uses ``class_sample_counts`` as the class weights. This is
-    useful when the evaluation split is balanced but the training split should
-    be treated as imbalanced for reporting.
-    """
     results_folder = Path(results_folder)
     confusion_path = results_folder / confusion_filename
     grouped_counts: dict[tuple[str, int], dict[tuple[int, int], float]] = {}
@@ -208,7 +210,6 @@ def compute_topk_metrics(
     k: int = 3,
     logits_filename: str = "test_logits.csv",
 ) -> list[dict[str, float | int | str]]:
-    """Compute Top-k accuracy and macro Recall@k from saved test logits."""
     results_folder = Path(results_folder)
     logits_path = results_folder / logits_filename
     grouped_hits: dict[tuple[str, int], dict[str, object]] = {}
@@ -279,7 +280,6 @@ def compute_topk_metrics(
 
 
 def _softmax_confidence(logits: Sequence[tuple[float, int]]) -> tuple[int, float]:
-    """Return the predicted label and max softmax probability for one logit row."""
     max_logit, predicted_label = max(logits, key=lambda item: item[0])
     exp_sum = sum(math.exp(logit - max_logit) for logit, _ in logits)
     return predicted_label, 1.0 / exp_sum if exp_sum else 0.0
@@ -290,11 +290,6 @@ def compute_reliability_rows(
     n_bins: int = 10,
     logits_filename: str = "test_logits.csv",
 ) -> list[dict[str, float | int | str]]:
-    """Bin epoch-level predictions by confidence for reliability diagrams.
-
-    Confidence is computed from saved logits as max(softmax(logits)). Accuracy
-    is the fraction of predictions in that confidence bin that match true_label.
-    """
     if n_bins < 1:
         raise ValueError("n_bins must be at least 1.")
 
@@ -360,7 +355,6 @@ def compute_epoch_confidence_accuracy_rows(
     results_folder: str | Path,
     logits_filename: str = "test_logits.csv",
 ) -> list[dict[str, float | int | str]]:
-    """Compute one confidence/accuracy point per epoch from saved logits."""
     results_folder = Path(results_folder)
     logits_path = results_folder / logits_filename
     grouped_epochs: dict[tuple[str, int], dict[str, float | int]] = {}
@@ -418,7 +412,6 @@ def compute_metrics(
     class_sample_counts: Mapping[int, int] | Sequence[int],
     k: int = 3,
 ) -> list[dict[str, float | int | str]]:
-    """Compute all requested metrics for one training-results folder."""
     confusion_metrics = compute_confusion_metrics(results_folder, class_sample_counts)
     topk_metrics = compute_topk_metrics(results_folder, k=k)
     topk_by_key = {
@@ -440,7 +433,6 @@ def aggregate_reliability_rows(
     seed_reliability_rows: Sequence[Mapping[str, float | int | str]],
     confidence_z: float = 1.96,
 ) -> list[dict[str, float | int | str]]:
-    """Aggregate reliability rows across seeds for each loss/epoch/bin."""
     grouped: dict[tuple[str, int, int], list[Mapping[str, float | int | str]]] = {}
     for row in seed_reliability_rows:
         grouped.setdefault(
@@ -488,7 +480,6 @@ def aggregate_epoch_confidence_accuracy_rows(
     seed_rows: Sequence[Mapping[str, float | int | str]],
     confidence_z: float = 1.96,
 ) -> list[dict[str, float | int | str]]:
-    """Aggregate epoch-level confidence/accuracy points across seeds."""
     grouped: dict[tuple[str, int], list[Mapping[str, float | int | str]]] = {}
     for row in seed_rows:
         grouped.setdefault((str(row["criterion"]), int(row["epoch"])), []).append(row)
@@ -538,11 +529,6 @@ def aggregate_seed_metrics(
     metric_columns: Sequence[str] = METRIC_COLUMNS,
     confidence_z: float = 1.96,
 ) -> list[dict[str, float | int | str]]:
-    """Aggregate seed-level metric rows into mean/std/CI rows.
-
-    Confidence intervals are normal-approximation 95% intervals by default:
-    mean +/- 1.96 * sample_std / sqrt(number_of_seeds).
-    """
     grouped: dict[tuple[str, int], list[Mapping[str, float | int | str]]] = {}
     for row in seed_metric_rows:
         grouped.setdefault((str(row["criterion"]), int(row["epoch"])), []).append(row)
@@ -580,7 +566,6 @@ def plot_metrics(
     metric_columns: Sequence[str] = METRIC_COLUMNS,
     zoom_to_data: bool = False,
 ) -> None:
-    """Plot the requested metrics over epochs for each criterion in the data."""
     if not metrics_rows:
         raise ValueError("No metrics rows to plot.")
 
@@ -609,6 +594,7 @@ def plot_metrics(
                 marker="o",
                 linewidth=1.8,
                 label=criterion,
+                color=LOSS_COLORS.get(criterion)
             )
         ax.set_title(metric)
         ax.set_xlabel("Epoch")
@@ -628,10 +614,10 @@ def plot_metrics(
         unused_ax.axis("off")
 
     handles, labels = axes[0].get_legend_handles_labels()
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     if handles:
-        fig.legend(handles, labels, loc="upper center", ncol=min(len(labels), 4))
-    fig.suptitle(title, y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+        fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.92), ncol=min(len(labels), 4))
+    fig.suptitle(title, y=0.98)
 
     if output_path is not None:
         output_path = Path(output_path)
@@ -653,7 +639,6 @@ def plot_aggregate_metrics(
     include_confidence_intervals: bool = True,
     zoom_to_data: bool = False,
 ) -> None:
-    """Plot aggregate metric means, optionally with confidence intervals."""
     if not aggregate_rows:
         raise ValueError("No aggregate rows to plot.")
 
@@ -675,15 +660,16 @@ def plot_aggregate_metrics(
             epochs = [int(row["epoch"]) for row in criterion_rows]
             means = [float(row[f"{metric} Mean"]) for row in criterion_rows]
             y_values.extend(means)
-
-            ax.plot(epochs, means, marker="o", linewidth=1.8, label=criterion)
+            
+            color = LOSS_COLORS.get(criterion)
+            ax.plot(epochs, means, marker="o", linewidth=1.8, label=criterion, color=color)
 
             if include_confidence_intervals:
                 ci_low = [float(row[f"{metric} CI Low"]) for row in criterion_rows]
                 ci_high = [float(row[f"{metric} CI High"]) for row in criterion_rows]
                 y_values.extend(ci_low)
                 y_values.extend(ci_high)
-                ax.fill_between(epochs, ci_low, ci_high, alpha=0.18)
+                ax.fill_between(epochs, ci_low, ci_high, alpha=0.18, color=color)
 
         ax.set_title(metric)
         ax.set_xlabel("Epoch")
@@ -703,16 +689,16 @@ def plot_aggregate_metrics(
         unused_ax.axis("off")
 
     handles, labels = axes[0].get_legend_handles_labels()
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     if handles:
         fig.legend(
             handles,
             labels,
-            loc="upper center",
-            bbox_to_anchor=(0.5, 0.995),
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.92),
             ncol=min(len(labels), 5),
         )
-    fig.suptitle(title, y=0.94)
-    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    fig.suptitle(title, y=0.98)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -755,7 +741,6 @@ def plot_reliability_diagram(
     epochs: Sequence[int] | None = None,
     max_epoch_curves: int = 5,
 ) -> None:
-    """Plot accuracy vs confidence curves, with separate lines per epoch."""
     if not reliability_rows:
         raise ValueError("No reliability rows to plot.")
 
@@ -807,7 +792,6 @@ def plot_epoch_confidence_accuracy(
     title: str = "Accuracy vs Confidence Over Epochs",
     annotate_epochs: bool = True,
 ) -> None:
-    """Plot one line where each point is one epoch's mean confidence and accuracy."""
     if not epoch_rows:
         raise ValueError("No epoch confidence/accuracy rows to plot.")
 
@@ -865,7 +849,6 @@ def plot_epoch_confidence_accuracy_comparison(
     show: bool = False,
     title: str = "Accuracy vs Confidence Over Epochs",
 ) -> None:
-    """Plot one epoch confidence/accuracy line for each criterion."""
     if not epoch_rows:
         raise ValueError("No epoch confidence/accuracy rows to plot.")
 
@@ -885,16 +868,17 @@ def plot_epoch_confidence_accuracy_comparison(
             linewidth=1.8,
             markersize=4,
             label=criterion,
+            color=LOSS_COLORS.get(criterion)
         )
 
     ax.set_xlabel("Average Confidence")
     ax.set_ylabel("Average Accuracy")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    ax.set_title(title)
     ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best", fontsize=9)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.05), ncol=min(len(criteria), 3), fontsize=9)
+    fig.suptitle(title, y=0.98)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -913,7 +897,6 @@ def plot_terminal_loss_comparison(
     title: str = "Terminal Loss Comparison",
     metric_columns: Sequence[str] = AGGREGATE_PLOT_METRIC_COLUMNS,
 ) -> None:
-    """Plot final-epoch metric means and confidence intervals by loss function."""
     if not aggregate_rows:
         raise ValueError("No aggregate rows to plot.")
 
@@ -940,15 +923,31 @@ def plot_terminal_loss_comparison(
         lower_errors = [mean - low for mean, low in zip(means, ci_low, strict=True)]
         upper_errors = [high - mean for mean, high in zip(means, ci_high, strict=True)]
 
-        ax.errorbar(
-            x_positions,
-            means,
-            yerr=[lower_errors, upper_errors],
-            marker="o",
-            linewidth=1.8,
-            capsize=4,
-            capthick=1.2,
-        )
+        for i, (x_pos, mean, low_err, up_err, crit) in enumerate(zip(x_positions, means, lower_errors, upper_errors, labels)):
+            ax.errorbar(
+                x_pos,
+                mean,
+                yerr=[[low_err], [up_err]],
+                marker="o",
+                linewidth=1.8,
+                capsize=4,
+                capthick=1.2,
+                color=LOSS_COLORS.get(crit),
+                label=crit if index == 0 else ""
+            )
+            
+            # Annotate the mean value next to the marker
+            ax.annotate(
+                f"{mean:.4f}",
+                (x_pos, mean),
+                textcoords="offset points",
+                xytext=(15, 0),
+                ha="left",
+                va="center",
+                fontsize=9,
+                color=LOSS_COLORS.get(crit, "black")
+            )
+            
         ax.set_title(metric)
         y_min = min(ci_low)
         y_max = max(ci_high)
@@ -969,8 +968,12 @@ def plot_terminal_loss_comparison(
         if len(final_epochs) == 1
         else f"Terminal Epochs {final_epochs}"
     )
+    
+    handles, legend_labels = axes[0].get_legend_handles_labels()
+    fig.tight_layout(rect=[0, 0, 1, 0.90])
+    if handles:
+        fig.legend(handles, legend_labels, loc="lower center", bbox_to_anchor=(0.5, 0.90), ncol=min(len(legend_labels), 5))
     fig.suptitle(f"{title} ({epoch_note})", y=0.98)
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1020,7 +1023,6 @@ def find_missing_project_metric_files(
     project_root: str | Path = ".",
     seeds: Sequence[str] = PROJECT_SEEDS,
 ) -> list[Path]:
-    """Return required metric files missing from the fixed project layout."""
     project_root = Path(project_root)
     if split not in PROJECT_LOSSES:
         raise ValueError(f"Unknown split {split!r}. Expected one of {sorted(PROJECT_LOSSES)}.")
@@ -1044,7 +1046,6 @@ def compute_project_split_metrics(
     seeds: Sequence[str] = PROJECT_SEEDS,
     k: int = 3,
 ) -> list[dict[str, float | int | str]]:
-    """Compute seed-level metrics for one fixed project split."""
     project_root = Path(project_root)
     if split not in PROJECT_LOSSES:
         raise ValueError(f"Unknown split {split!r}. Expected one of {sorted(PROJECT_LOSSES)}.")
@@ -1081,7 +1082,6 @@ def plot_project_split_metrics(
     confidence_z: float = 1.96,
     show: bool = False,
 ) -> tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]:
-    """Create per-loss CI plots plus one all-loss mean-only plot for a split."""
     metric_columns = _metric_columns(k)
     plot_metric_columns = _aggregate_plot_metric_columns(k)
     output_dir = Path(output_dir) / split
@@ -1150,7 +1150,6 @@ def compute_project_split_reliability(
     seeds: Sequence[str] = PROJECT_SEEDS,
     n_bins: int = 10,
 ) -> list[dict[str, float | int | str]]:
-    """Compute seed-level reliability rows for one fixed project split."""
     project_root = Path(project_root)
     if split not in PROJECT_LOSSES:
         raise ValueError(f"Unknown split {split!r}. Expected one of {sorted(PROJECT_LOSSES)}.")
@@ -1200,7 +1199,6 @@ def plot_project_split_reliability(
     confidence_z: float = 1.96,
     show: bool = False,
 ) -> tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]:
-    """Create loss-wise reliability diagrams for a fixed project split."""
     output_dir = Path(output_dir) / split
     seed_rows = compute_project_split_reliability(
         split,
@@ -1270,7 +1268,6 @@ def compute_project_split_epoch_confidence_accuracy(
     project_root: str | Path = ".",
     seeds: Sequence[str] = PROJECT_SEEDS,
 ) -> list[dict[str, float | int | str]]:
-    """Compute seed-level epoch confidence/accuracy rows for one project split."""
     project_root = Path(project_root)
     if split not in PROJECT_LOSSES:
         raise ValueError(f"Unknown split {split!r}. Expected one of {sorted(PROJECT_LOSSES)}.")
@@ -1317,7 +1314,6 @@ def plot_project_split_epoch_confidence_accuracy(
     confidence_z: float = 1.96,
     show: bool = False,
 ) -> tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]:
-    """Create one-line epoch confidence/accuracy plots for each loss in a split."""
     output_dir = Path(output_dir) / split
     seed_rows = compute_project_split_epoch_confidence_accuracy(
         split,
@@ -1392,7 +1388,6 @@ def plot_project_metrics(
     confidence_z: float = 1.96,
     show: bool = False,
 ) -> dict[str, tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]]:
-    """Generate all fixed project plots for balanced and imbalanced folders."""
     split_counts = {
         "balanced": balanced_class_counts,
         "imbalanced": imbalanced_class_counts,
@@ -1438,7 +1433,6 @@ def plot_results_folder(
     k: int = 3,
     show: bool = False,
 ) -> list[dict[str, float | int | str]]:
-    """Compute and plot metrics for a folder such as training_data/balanced/ce/seed_2."""
     results_folder = Path(results_folder)
     metrics_rows = compute_metrics(results_folder, class_sample_counts, k=k)
 
@@ -1464,7 +1458,6 @@ def plot_results_folder_reliability(
     max_epoch_curves: int = 5,
     show: bool = False,
 ) -> list[dict[str, float | int | str]]:
-    """Compute and plot reliability rows for one results folder."""
     results_folder = Path(results_folder)
     reliability_rows = compute_reliability_rows(results_folder, n_bins=n_bins)
 
@@ -1489,7 +1482,6 @@ def plot_results_folder_epoch_confidence_accuracy(
     output_path: str | Path | None = None,
     show: bool = False,
 ) -> list[dict[str, float | int | str]]:
-    """Compute and plot one epoch confidence/accuracy line for one results folder."""
     results_folder = Path(results_folder)
     rows = compute_epoch_confidence_accuracy_rows(results_folder)
 
