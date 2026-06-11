@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from metric_plotting import (
+from analysis_scripts.metric_plotting import (
     PROJECT_LOSSES,
     PROJECT_SEEDS,
     _aggregate_plot_metric_columns,

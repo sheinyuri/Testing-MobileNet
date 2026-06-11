@@ -1,4 +1,4 @@
-from metric_plotting import compute_metrics, plot_metrics
+from analysis_scripts.metric_plotting import compute_metrics, plot_metrics
 
 class_counts = [5000] * 10
 

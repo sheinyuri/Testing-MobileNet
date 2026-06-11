@@ -8,9 +8,11 @@
 
 
 Very relevant:
+https://arxiv.org/pdf/1901.05903
 https://ieeexplore.ieee.org/abstract/document/9323583
 https://link.springer.com/article/10.1007/s11042-024-19543-8
 https://d1wqtxts1xzle7.cloudfront.net/100504839/NN_ImgProc-libre.pdf?1680279663=&response-content-disposition=inline%3B+filename%3DLoss_Functions_for_Image_Restoration_Wit.pdf&Expires=1778589234&Signature=KlNkmSr0mYKX-lMMnw0qP4wsf6ntvYfysM02w4ckl33d7Ac1a6QPyW4tOatTVq0ny0WbVQ0iLwr1j6fXz3xsEuitZALHVO5mVWPPTg5GovuyjMyh-ESfRoSD71tV5ovVDItbZY9EKK9sRKZPHdKp5A7OB53y0uC96Iiu4XM8bp8Xy0sSwdeTMCGoqc5D4Pk5x0~~YY3yuHShHTAPVSrl0IBqAKuELG~5J4DX6dCznVAXMv94JXUpM6wbFi1Nv8K1FZTVlk6tgmUTonJOFr9pVMVQf-pQmT8S0weqhmL9d0qwpw6YRgyAcWmsS0zS~18IhsS1-Vs5gfJ8wLKJD6nykg__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA
+https://arxiv.org/pdf/2009.02189
 
 Somewhat related:
 https://ieeexplore.ieee.org/abstract/document/9086269
