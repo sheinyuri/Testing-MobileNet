@@ -1,5 +1,5 @@
 # A comparative study of loss functions for deep learning image classification tasks using MobileNetV3
-Authors: Libby Boas (u7917089), Yuri Sheinker (u7937764), Ryan Guo (u7847522)
+Authors: Libby Boas (u7917089), Yuri Sheinker (u7937764), Ryan Guo (u7847522), Oliver Ang Bao (u7947738)
 
 ### `TestingMobileNet.ipynb`
 
