@@ -1,5 +1,7 @@
 import torch
 
+# Used in TestingMobileNet
+
 def update_confusion_matrix(conf_matrix, outputs, labels):
     predictions = outputs.argmax(dim=1)
 
